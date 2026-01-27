@@ -2,6 +2,7 @@ import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, FlatList }
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { useEffect, useState } from 'react';
+import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 
 interface Shop {
@@ -25,6 +26,7 @@ interface Product {
 }
 
 export default function HomeScreen() {
+  const router = useRouter();
   const [featuredShops, setFeaturedShops] = useState<Shop[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -78,11 +80,11 @@ export default function HomeScreen() {
   };
 
   const handleProductPress = (product: Product) => {
-    console.log('Ürüne tıklandı:', product.id);
+    router.push(`/shop/${product.shop_id}`);
   };
 
   const handleShopPress = (shopId: string) => {
-    console.log('Mağazaya tıklandı:', shopId);
+    router.push(`/shop/${shopId}`);
   };
 
   if (loading) {

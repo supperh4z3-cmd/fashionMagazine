@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Dimensions } from 'react-native';
 import MapView, { Marker, UrlTile, Callout } from 'react-native-maps';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
+import { useRouter } from 'expo-router';
 import { supabase } from '../lib/supabase';
 
 const MERTER_REGION = {
@@ -21,6 +22,7 @@ interface Shop {
 }
 
 export default function MapComponent() {
+  const router = useRouter();
   const [shops, setShops] = useState<Shop[]>([]);
 
   useEffect(() => {
@@ -71,7 +73,7 @@ export default function MapComponent() {
                   </View>
                 )}
               </View>
-              <Callout>
+              <Callout onPress={() => router.push(`/shop/${shop.id}`)}>
                 <View style={styles.callout}>
                   <Text style={styles.calloutText}>{shop.name}</Text>
                 </View>
