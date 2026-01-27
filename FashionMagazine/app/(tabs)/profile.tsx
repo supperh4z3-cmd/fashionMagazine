@@ -17,13 +17,17 @@ export default function ProfileScreen() {
   const blurhash = 'L6PZfSi_.AyE_3t7t7R**0o#DgR4';
 
   useEffect(() => {
+    setLoading(true);
     supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setLoading(false);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
     });
 
-    supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-    });
+    return () => subscription.unsubscribe();
   }, []);
 
   const handleAuth = async () => {
@@ -60,6 +64,14 @@ export default function ProfileScreen() {
   const handleSignOut = async () => {
     await supabase.auth.signOut();
   };
+
+  if (loading) {
+    return (
+      <SafeAreaView className="flex-1 bg-navy justify-center items-center">
+        <ActivityIndicator size="large" color="#d4af37" />
+      </SafeAreaView>
+    );
+  }
 
   if (session) {
     const user = session.user;

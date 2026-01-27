@@ -150,6 +150,11 @@ export default function ShopDetailScreen() {
     );
   }
 
+  // Fallback for null fields
+  const shopName = shop.name || 'Mağaza';
+  const shopLogo = shop.logo_url;
+  const shopInitial = shopName.charAt(0).toUpperCase();
+
   return (
     <SafeAreaView className="flex-1 bg-navy" edges={['top']}>
       <Stack.Screen options={{ headerShown: false }} />
@@ -159,7 +164,7 @@ export default function ShopDetailScreen() {
         <TouchableOpacity onPress={() => router.back()} className="p-2">
             <FontAwesome name="arrow-left" size={20} color="#d4af37" />
         </TouchableOpacity>
-        <Text className="text-gold font-bold text-lg ml-4 flex-1 text-center mr-8">{shop.name}</Text>
+        <Text className="text-gold font-bold text-lg ml-4 flex-1 text-center mr-8">{shopName}</Text>
       </View>
 
       <ScrollView className="flex-1">
@@ -167,16 +172,16 @@ export default function ShopDetailScreen() {
         <View className="items-center py-6 px-4 border-b border-gold/20">
             <View className="w-28 h-28 rounded-full border-2 border-gold overflow-hidden bg-white mb-4 justify-center items-center">
                 <Image
-                  source={shop.logo_url ? { uri: shop.logo_url } : null}
+                  source={shopLogo ? { uri: shopLogo } : null}
                   placeholder={blurhash}
                   contentFit="cover"
                   transition={500}
                   className="w-full h-full"
                 />
-                 {!shop.logo_url && <Text className="text-navy text-2xl font-bold">{shop.name.charAt(0)}</Text>}
+                 {!shopLogo && <Text className="text-navy text-2xl font-bold">{shopInitial}</Text>}
             </View>
 
-            <Text className="text-white text-xl font-bold mb-2">{shop.name}</Text>
+            <Text className="text-white text-xl font-bold mb-2">{shopName}</Text>
             {shop.description && (
                 <Text className="text-gray-300 text-center text-sm px-8 mb-4">{shop.description}</Text>
             )}
