@@ -1,14 +1,17 @@
-import { View, Text, TextInput, TouchableOpacity, FlatList, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, FlatList, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FontAwesome } from '@expo/vector-icons';
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
+import { translateText } from '../../lib/translate';
+import i18n from '../../lib/i18n';
 
 interface Message {
   id: string;
   sender_id: string;
   content: string;
+  translation: string | null;
   created_at: string;
 }
 
@@ -19,6 +22,7 @@ export default function ChatRoomScreen() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [userId, setUserId] = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
   const flatListRef = useRef<FlatList>(null);
 
   useEffect(() => {
@@ -65,19 +69,35 @@ export default function ChatRoomScreen() {
 
   const sendMessage = async () => {
     if (!newMessage.trim() || !userId) return;
+    setSending(true);
 
-    const { error } = await supabase
-      .from('messages')
-      .insert({
-        conversation_id: id,
-        sender_id: userId,
-        content: newMessage.trim(),
-      });
+    try {
+        const currentLang = i18n.language.split('-')[0]; // 'tr', 'en', 'ar'
+        const targetLang = currentLang === 'tr' ? 'ar' : 'tr'; // Simple toggle for MVP: if TR translate to AR, else to TR.
 
-    if (error) {
-      console.error('Error sending message:', error);
-    } else {
-      setNewMessage('');
+        let translatedContent = null;
+        if (newMessage.trim()) {
+             translatedContent = await translateText(newMessage.trim(), currentLang, targetLang);
+        }
+
+        const { error } = await supabase
+        .from('messages')
+        .insert({
+            conversation_id: id,
+            sender_id: userId,
+            content: newMessage.trim(),
+            translation: translatedContent
+        });
+
+        if (error) {
+            console.error('Error sending message:', error);
+        } else {
+            setNewMessage('');
+        }
+    } catch (e) {
+        console.error("Send failed:", e);
+    } finally {
+        setSending(false);
     }
   };
 
@@ -90,7 +110,7 @@ export default function ChatRoomScreen() {
         <TouchableOpacity onPress={() => router.back()} className="p-2 mr-2">
             <FontAwesome name="arrow-left" size={20} color="#d4af37" />
         </TouchableOpacity>
-        <Text className="text-gold font-bold text-lg flex-1">Sohbet</Text>
+        <Text className="text-gold font-bold text-lg flex-1">{i18n.t('chat')}</Text>
       </View>
 
       <KeyboardAvoidingView
@@ -121,6 +141,11 @@ export default function ChatRoomScreen() {
                   <Text className={`text-base ${isMyMessage ? 'text-navy font-medium' : 'text-gray-800'}`}>
                     {item.content}
                   </Text>
+                  {item.translation && (
+                      <Text className={`text-xs italic mt-1 ${isMyMessage ? 'text-navy/70' : 'text-gray-500'}`}>
+                          {item.translation}
+                      </Text>
+                  )}
                   <Text className={`text-[10px] mt-1 text-right ${isMyMessage ? 'text-navy/60' : 'text-gray-500'}`}>
                     {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </Text>
@@ -135,7 +160,7 @@ export default function ChatRoomScreen() {
           <TextInput
             value={newMessage}
             onChangeText={setNewMessage}
-            placeholder="Mesajınızı yazın..."
+            placeholder={i18n.t('send') + "..."}
             placeholderTextColor="#999"
             multiline
             className="flex-1 bg-white/10 text-white p-3 rounded-full mr-3 border border-white/20 max-h-24"
@@ -143,11 +168,15 @@ export default function ChatRoomScreen() {
           <TouchableOpacity
             onPress={sendMessage}
             className={`w-12 h-12 rounded-full justify-center items-center ${
-              newMessage.trim() ? 'bg-gold' : 'bg-gray-600'
+              newMessage.trim() && !sending ? 'bg-gold' : 'bg-gray-600'
             }`}
-            disabled={!newMessage.trim()}
+            disabled={!newMessage.trim() || sending}
           >
-            <FontAwesome name="send" size={18} color={newMessage.trim() ? '#001f3f' : '#ccc'} />
+            {sending ? (
+                <ActivityIndicator color="#001f3f" size="small" />
+            ) : (
+                <FontAwesome name="send" size={18} color={newMessage.trim() ? '#001f3f' : '#ccc'} />
+            )}
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>

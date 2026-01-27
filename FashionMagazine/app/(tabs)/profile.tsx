@@ -5,8 +5,11 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Session } from '@supabase/supabase-js';
 import { Image } from 'expo-image';
+import i18n, { changeLanguage } from '../../lib/i18n';
+import { useTranslation } from 'react-i18next';
 
 export default function ProfileScreen() {
+  const { t } = useTranslation();
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
@@ -109,6 +112,29 @@ export default function ProfileScreen() {
               <Text className="text-white text-lg ml-4">Ayarlar</Text>
             </TouchableOpacity>
 
+            <View className="mb-4 mt-2">
+                <Text className="text-gold font-bold mb-2 ml-1">{t('change_language')}</Text>
+                <View className="flex-row justify-between">
+                    {['tr', 'en', 'ar'].map((lang) => (
+                        <TouchableOpacity
+                            key={lang}
+                            onPress={() => changeLanguage(lang)}
+                            className={`flex-1 mx-1 py-2 rounded border ${
+                                i18n.language.startsWith(lang)
+                                ? 'bg-gold border-gold'
+                                : 'bg-transparent border-white/30'
+                            }`}
+                        >
+                            <Text className={`text-center font-bold uppercase ${
+                                i18n.language.startsWith(lang) ? 'text-navy' : 'text-white'
+                            }`}>
+                                {lang}
+                            </Text>
+                        </TouchableOpacity>
+                    ))}
+                </View>
+            </View>
+
             <TouchableOpacity
               onPress={handleSignOut}
               className="flex-row items-center p-4 bg-navy-light mt-8 border border-red-900 rounded-lg"
@@ -131,7 +157,7 @@ export default function ProfileScreen() {
 
       <View className="bg-white/5 p-6 rounded-2xl border border-gold/30">
         <Text className="text-white text-xl font-bold mb-6 text-center">
-          {isLogin ? 'Giriş Yap' : 'Hesap Oluştur'}
+          {isLogin ? t('login') : t('register')}
         </Text>
 
         {!isLogin && (
@@ -180,7 +206,7 @@ export default function ProfileScreen() {
             <ActivityIndicator color="#001f3f" />
           ) : (
             <Text className="text-navy font-bold text-lg">
-              {isLogin ? 'Giriş Yap' : 'Kayıt Ol'}
+              {isLogin ? t('login') : t('register')}
             </Text>
           )}
         </TouchableOpacity>
@@ -189,7 +215,7 @@ export default function ProfileScreen() {
           <Text className="text-gray-400">
             {isLogin ? "Hesabınız yok mu? " : "Zaten hesabınız var mı? "}
             <Text className="text-gold font-bold">
-              {isLogin ? 'Kayıt Ol' : 'Giriş Yap'}
+              {isLogin ? t('register') : t('login')}
             </Text>
           </Text>
         </TouchableOpacity>
