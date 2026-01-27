@@ -82,8 +82,50 @@ export default function ShopDetailScreen() {
     }
   };
 
-  const handleMessagePress = () => {
-    console.log('Uygulama içi mesaj atılacak');
+  const handleMessagePress = async () => {
+    setLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session) {
+        // Not logged in, redirect to profile
+        router.push('/(tabs)/profile');
+        return;
+      }
+
+      // Check for existing conversation
+      const { data: existingConv, error: fetchError } = await supabase
+        .from('conversations')
+        .select('id')
+        .eq('buyer_id', session.user.id)
+        .eq('shop_id', id)
+        .single();
+
+      if (existingConv) {
+        // Navigate to existing conversation
+        router.push(`/messages/${existingConv.id}`);
+      } else {
+        // Create new conversation
+        const { data: newConv, error: createError } = await supabase
+          .from('conversations')
+          .insert({
+            buyer_id: session.user.id,
+            shop_id: id,
+          })
+          .select()
+          .single();
+
+        if (createError) throw createError;
+        if (newConv) {
+          router.push(`/messages/${newConv.id}`);
+        }
+      }
+
+    } catch (e) {
+      console.error('Error handling message:', e);
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (loading) {
