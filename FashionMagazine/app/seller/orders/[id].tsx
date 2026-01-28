@@ -4,6 +4,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { FontAwesome } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
 import { supabase } from '../../../lib/supabase';
+import * as ImagePicker from 'expo-image-picker';
+import { decode } from 'base64-arraybuffer';
 
 interface OrderItem {
   id: string;
@@ -28,6 +30,13 @@ export default function ManageOrderScreen() {
   const [extras, setExtras] = useState<Extra[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [orderStatus, setOrderStatus] = useState<string>('');
+
+  // Shipping Form State
+  const [cargoCompany, setCargoCompany] = useState('');
+  const [trackingNo, setTrackingNo] = useState('');
+  const [receiptImage, setReceiptImage] = useState<string | null>(null);
+  const [receiptBase64, setReceiptBase64] = useState<string | null>(null);
 
   useEffect(() => {
     fetchOrderDetails();
@@ -35,6 +44,10 @@ export default function ManageOrderScreen() {
 
   const fetchOrderDetails = async () => {
     try {
+      // Fetch Order Status first
+      const { data: orderData } = await supabase.from('orders').select('status').eq('id', id).single();
+      if (orderData) setOrderStatus(orderData.status);
+
       const { data: items, error } = await supabase
         .from('order_items')
         .select(`
@@ -103,6 +116,28 @@ export default function ManageOrderScreen() {
 
   const grandTotal = calculateSubtotal() + calculateExtrasTotal();
 
+  const pickReceiptImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 0.5,
+      base64: true,
+    });
+
+    if (!result.canceled && result.assets[0].base64) {
+      // Store the base64 string directly in the state, prefixed with data URI for preview if needed,
+      // but here we misuse the state slightly: we store the URI for preview, and the base64 in a separate way?
+      // Since `receiptImage` is string | null, let's just store the base64 string if we use it for upload,
+      // BUT `TextInput` or `Image` component needs a URI.
+      // Better: Store the whole asset or just keep it simple: Use a ref or a separate state variable.
+      // However, for this fix, I'll return the base64 from this function and handle it in the submit handler?
+      // No, `pickReceiptImage` is called by onPress.
+      // I will introduce a state `receiptBase64`.
+      setReceiptImage(result.assets[0].uri);
+      setReceiptBase64(result.assets[0].base64);
+    }
+  };
+
   const submitOffer = async () => {
     setSubmitting(true);
     try {
@@ -145,6 +180,67 @@ export default function ManageOrderScreen() {
       Alert.alert("Hata", "Teklif gönderilemedi: " + e.message);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const submitShipment = async () => {
+    if (!cargoCompany || !trackingNo) {
+        Alert.alert("Eksik Bilgi", "Lütfen kargo bilgilerini giriniz.");
+        return;
+    }
+
+    setSubmitting(true);
+    try {
+        let receiptUrl = null;
+
+        if (receiptBase64) {
+            const fileName = `receipt-${id}-${Date.now()}.jpg`;
+
+            const { data, error } = await supabase.storage
+                .from('order-receipts')
+                .upload(fileName, decode(receiptBase64), {
+                    contentType: 'image/jpeg',
+                    upsert: false
+                });
+
+            if (error) throw error;
+
+            const { data: publicData } = supabase.storage
+                .from('order-receipts')
+                .getPublicUrl(fileName);
+
+            receiptUrl = publicData.publicUrl;
+        }
+
+        const { error } = await supabase
+            .from('orders')
+            .update({
+                status: 'shipped',
+                receipt_url: receiptUrl,
+                // In a real app, store cargoCompany/trackingNo in DB.
+                // Adding to order_extras for now as a workaround or assume DB updated.
+                // Or just update status as requested.
+            })
+            .eq('id', id);
+
+        if (error) throw error;
+
+        // Add tracking info as an extra note?
+        // Or updated order table? User asked for "Kargo Formu", implies storage.
+        // I will add an extra item for tracking info if no column exists.
+        await supabase.from('order_extras').insert({
+            order_id: id,
+            description: `Kargo: ${cargoCompany} - Takip: ${trackingNo}`,
+            amount: 0
+        });
+
+        Alert.alert("Başarılı", "Sipariş kargolandı.");
+        router.back();
+
+    } catch (e: any) {
+        Alert.alert("Hata", "İşlem başarısız: " + e.message);
+    } finally {
+        setSubmitting(false);
     }
   };
 
@@ -270,17 +366,61 @@ export default function ManageOrderScreen() {
 
         {/* Footer Action */}
         <View className="p-4 bg-white border-t border-gray-200">
-            <TouchableOpacity
-                onPress={submitOffer}
-                disabled={submitting}
-                className="bg-navy py-4 rounded-lg items-center shadow-lg"
-            >
-                {submitting ? (
-                    <ActivityIndicator color="#d4af37" />
-                ) : (
-                    <Text className="text-gold font-bold text-lg">Teklifi Gönder / Onaya Sun</Text>
-                )}
-            </TouchableOpacity>
+            {orderStatus === 'requested' && (
+                <TouchableOpacity
+                    onPress={submitOffer}
+                    disabled={submitting}
+                    className="bg-navy py-4 rounded-lg items-center shadow-lg"
+                >
+                    {submitting ? (
+                        <ActivityIndicator color="#d4af37" />
+                    ) : (
+                        <Text className="text-gold font-bold text-lg">Teklifi Gönder / Onaya Sun</Text>
+                    )}
+                </TouchableOpacity>
+            )}
+
+            {orderStatus === 'approved' && (
+                <View>
+                    <Text className="text-navy font-bold mb-2">Kargo Bilgileri</Text>
+                    <TextInput
+                        className="border border-gray-300 rounded p-2 mb-2"
+                        placeholder="Kargo Firması"
+                        value={cargoCompany}
+                        onChangeText={setCargoCompany}
+                    />
+                    <TextInput
+                        className="border border-gray-300 rounded p-2 mb-2"
+                        placeholder="Takip No"
+                        value={trackingNo}
+                        onChangeText={setTrackingNo}
+                    />
+
+                    <TouchableOpacity onPress={pickReceiptImage} className="bg-gray-200 p-3 rounded items-center mb-4">
+                        <Text className="text-navy font-medium">
+                            {receiptImage ? 'Fiş Seçildi (Değiştir)' : 'Teslim Fişi / Ambar Fişi Yükle'}
+                        </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        onPress={submitShipment}
+                        disabled={submitting}
+                        className="bg-green-600 py-4 rounded-lg items-center shadow-lg"
+                    >
+                        {submitting ? (
+                            <ActivityIndicator color="white" />
+                        ) : (
+                            <Text className="text-white font-bold text-lg">Kargolandı / Tamamla</Text>
+                        )}
+                    </TouchableOpacity>
+                </View>
+            )}
+
+            {['offered', 'shipped'].includes(orderStatus) && (
+                <View className="bg-gray-100 p-4 rounded items-center">
+                    <Text className="text-gray-500 font-bold uppercase">{orderStatus === 'offered' ? 'Müşteri Onayı Bekleniyor' : 'Sipariş Tamamlandı'}</Text>
+                </View>
+            )}
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>

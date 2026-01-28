@@ -134,7 +134,10 @@ export default function ProfileScreen() {
               <FontAwesome name="heart" size={20} color="#d4af37" className="mr-4" />
               <Text className="text-white text-lg ml-4">Favorilerim</Text>
             </TouchableOpacity>
-            <TouchableOpacity className="flex-row items-center p-4 bg-navy-light mb-2 border border-white/10 rounded-lg">
+            <TouchableOpacity
+              onPress={() => router.push('/buyer/orders')}
+              className="flex-row items-center p-4 bg-navy-light mb-2 border border-white/10 rounded-lg"
+            >
               <FontAwesome name="history" size={20} color="#d4af37" className="mr-4" />
               <Text className="text-white text-lg ml-4">Geçmiş Siparişler</Text>
             </TouchableOpacity>
