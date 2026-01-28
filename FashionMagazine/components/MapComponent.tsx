@@ -4,6 +4,7 @@ import MapView, { Marker, UrlTile, Callout } from 'react-native-maps';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
+import { MaterialIcons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
 
 const MERTER_REGION = {
@@ -19,6 +20,7 @@ interface Shop {
   latitude: number;
   longitude: number;
   logo_url: string | null;
+  is_verified: boolean;
 }
 
 export default function MapComponent() {
@@ -32,7 +34,7 @@ export default function MapComponent() {
   const fetchShops = async () => {
     const { data, error } = await supabase
       .from('shops')
-      .select('id, name, latitude, longitude, logo_url');
+      .select('id, name, latitude, longitude, logo_url, is_verified');
 
     if (error) {
       console.error('Error fetching shops for map:', error);
@@ -75,7 +77,10 @@ export default function MapComponent() {
               </View>
               <Callout onPress={() => router.push(`/shop/${shop.id}`)}>
                 <View style={styles.callout}>
-                  <Text style={styles.calloutText}>{shop.name}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Text style={styles.calloutText}>{shop.name}</Text>
+                    {shop.is_verified && <MaterialIcons name="verified" size={14} color="#1DA1F2" style={{ marginLeft: 2 }} />}
+                  </View>
                 </View>
               </Callout>
             </Marker>

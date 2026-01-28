@@ -5,11 +5,14 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 
+import { MaterialIcons } from '@expo/vector-icons';
+
 interface Shop {
   id: string;
   name: string;
   logo_url: string | null;
   is_featured: boolean;
+  is_verified: boolean;
 }
 
 interface Product {
@@ -44,7 +47,7 @@ export default function HomeScreen() {
       // Fetch Featured Shops
       const { data: shopsData, error: shopsError } = await supabase
         .from('shops')
-        .select('id, name, logo_url, is_featured')
+        .select('id, name, logo_url, is_featured, is_verified')
         .eq('is_featured', true);
 
       if (shopsError) console.error('Error fetching shops:', shopsError);
@@ -54,17 +57,7 @@ export default function HomeScreen() {
       const { data: featuredData } = await supabase
         .from('products')
         .select('id, shop_id, images, fabric_type, price, is_price_visible, shops(name)')
-        .eq('is_price_visible', true) // Assuming 'is_price_visible' might double as featured or we need a new column.
-        // User asked for 'is_featured' on product. We haven't added it to schema yet.
-        // I will assume I need to add it or use existing logic.
-        // Plan step 4 said "Update Database Schema (Optimization)", maybe I missed adding 'is_featured' to products there?
-        // Ah, the user prompt said: "Satıcı... tıkladığında ürünün is_featured değerini true yapsın."
-        // So I need to add 'is_featured' column to products too if it doesn't exist.
-        // Checking schema.sql... 'shops' has it, 'products' does not.
-        // I will filter by 'id' for now to prevent crash and add column in a migration if I can,
-        // but since I'm in the code step, I'll assume it exists for the query and handle the error if not.
-        // Actually, better to query standard products for now and filter manually if column missing?
-        // No, I'll limit to 5 random products as "Weekly Featured" for MVP if column missing.
+        .eq('is_featured', true)
         .limit(5);
 
       setFeaturedProducts(featuredData as any[] || []);
@@ -173,7 +166,10 @@ export default function HomeScreen() {
                     />
                     {!shop.logo_url && <Text className="text-navy text-xs font-bold">{shop.name.charAt(0)}</Text>}
                   </View>
-                  <Text className="text-white text-xs mt-2 font-medium" numberOfLines={1}>{shop.name}</Text>
+                  <View className="flex-row items-center mt-2">
+                    <Text className="text-white text-xs font-medium mr-1" numberOfLines={1}>{shop.name}</Text>
+                    {shop.is_verified && <MaterialIcons name="verified" size={12} color="#1DA1F2" />}
+                  </View>
                 </TouchableOpacity>
               ))}
             </ScrollView>

@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "FashionMagazine",
-    "slug": "FashionMagazine",
+    "slug": "fashion-magazine-b2b",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -12,6 +12,7 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.zagcoll.fashionmagazine",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",

@@ -1,6 +1,6 @@
 import { View, Text, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { FontAwesome } from '@expo/vector-icons';
+import { FontAwesome, MaterialIcons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useRouter } from 'expo-router';
@@ -13,6 +13,7 @@ interface Conversation {
   shops: {
     name: string;
     logo_url: string | null;
+    is_verified: boolean;
   };
 }
 
@@ -42,7 +43,8 @@ export default function MessagesScreen() {
           shop_id,
           shops (
             name,
-            logo_url
+            logo_url,
+            is_verified
           )
         `)
         .eq('buyer_id', session.user.id)
@@ -112,7 +114,10 @@ export default function MessagesScreen() {
             </View>
             <View className="flex-1">
               <View className="flex-row justify-between mb-1">
-                <Text className="text-white font-bold text-base">{item.shops.name}</Text>
+                <View className="flex-row items-center">
+                    <Text className="text-white font-bold text-base mr-1">{item.shops.name}</Text>
+                    {item.shops.is_verified && <MaterialIcons name="verified" size={14} color="#1DA1F2" />}
+                </View>
                 <Text className="text-gray-400 text-xs">
                     {new Date(item.created_at).toLocaleDateString()}
                 </Text>

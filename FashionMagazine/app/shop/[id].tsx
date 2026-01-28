@@ -7,6 +7,8 @@ import { FontAwesome } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import { useToast } from '../../context/ToastContext';
 
+import { MaterialIcons } from '@expo/vector-icons';
+
 interface Shop {
   id: string;
   owner_id: string;
@@ -14,6 +16,7 @@ interface Shop {
   description: string | null;
   logo_url: string | null;
   whatsapp_number: string | null;
+  is_verified: boolean;
 }
 
 interface Product {
@@ -291,7 +294,10 @@ export default function ShopDetailScreen() {
                 />
                  {!shopLogo && <Text className="text-navy text-2xl font-bold">{shopInitial}</Text>}
             </View>
-            <Text className="text-white text-xl font-bold mb-2">{shopName}</Text>
+            <View className="flex-row items-center mb-2">
+                <Text className="text-white text-xl font-bold mr-2">{shopName}</Text>
+                {shop.is_verified && <MaterialIcons name="verified" size={20} color="#1DA1F2" />}
+            </View>
             {shop.description && (
                 <Text className="text-gray-300 text-center text-sm px-8 mb-4">{shop.description}</Text>
             )}
