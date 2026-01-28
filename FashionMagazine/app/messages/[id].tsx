@@ -22,6 +22,7 @@ export default function ChatRoomScreen() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [userId, setUserId] = useState<string | null>(null);
+  const [recipientLang, setRecipientLang] = useState<string>('tr'); // Default
   const [sending, setSending] = useState(false);
   const flatListRef = useRef<FlatList>(null);
 
@@ -31,6 +32,7 @@ export default function ChatRoomScreen() {
     });
 
     fetchMessages();
+    fetchRecipientLanguage();
 
     // Subscribe to new messages
     const channel = supabase
@@ -67,16 +69,67 @@ export default function ChatRoomScreen() {
     }
   };
 
+  const fetchRecipientLanguage = async () => {
+    try {
+        // 1. Get conversation to find the OTHER participant
+        const { data: conv } = await supabase
+            .from('conversations')
+            .select('buyer_id, shop_id')
+            .eq('id', id)
+            .single();
+
+        if (!conv) return;
+
+        // Determine if I am buyer or shop (owner)
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+        const myId = session.user.id;
+
+        // If I am buyer, recipient is shop owner. If I am shop owner, recipient is buyer.
+        // Wait, 'conversations' has 'shop_id', but 'profiles' has 'id'.
+        // We need to get the user ID of the recipient.
+        // If I am buyer (myId === conv.buyer_id), recipient is shop owner.
+        // If I am not buyer, I must be shop owner (via 'shops' table), so recipient is buyer.
+
+        let recipientUserId = conv.buyer_id;
+
+        if (myId === conv.buyer_id) {
+            // I am the buyer, so I need the shop owner's profile language.
+            const { data: shop } = await supabase
+                .from('shops')
+                .select('owner_id')
+                .eq('id', conv.shop_id)
+                .single();
+            if (shop) recipientUserId = shop.owner_id;
+        }
+
+        // 2. Fetch Recipient Profile Language
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('language')
+            .eq('id', recipientUserId)
+            .single();
+
+        if (profile && profile.language) {
+            setRecipientLang(profile.language);
+        }
+
+    } catch (e) {
+        console.error("Error fetching recipient language:", e);
+    }
+  };
+
   const sendMessage = async () => {
     if (!newMessage.trim() || !userId) return;
     setSending(true);
 
     try {
-        const currentLang = i18n.language.split('-')[0]; // 'tr', 'en', 'ar'
-        const targetLang = currentLang === 'tr' ? 'ar' : 'tr'; // Simple toggle for MVP: if TR translate to AR, else to TR.
+        const currentLang = i18n.language.split('-')[0]; // My App Language
+        const targetLang = recipientLang; // Recipient's Saved Language
 
         let translatedContent = null;
-        if (newMessage.trim()) {
+        // Only translate if languages differ
+        if (newMessage.trim() && currentLang !== targetLang) {
              translatedContent = await translateText(newMessage.trim(), currentLang, targetLang);
         }
 

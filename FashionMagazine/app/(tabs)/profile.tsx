@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Session } from '@supabase/supabase-js';
 import { Image } from 'expo-image';
-import i18n, { changeLanguage } from '../../lib/i18n';
+import i18n, { changeLanguage, SUPPORTED_LANGUAGES } from '../../lib/i18n';
 import { useTranslation } from 'react-i18next';
 
 export default function ProfileScreen() {
@@ -115,10 +115,15 @@ export default function ProfileScreen() {
             <View className="mb-4 mt-2">
                 <Text className="text-gold font-bold mb-2 ml-1">{t('change_language')}</Text>
                 <View className="flex-row justify-between">
-                    {['tr', 'en', 'ar'].map((lang) => (
+                    {SUPPORTED_LANGUAGES.map((lang) => (
                         <TouchableOpacity
                             key={lang}
-                            onPress={() => changeLanguage(lang)}
+                            onPress={async () => {
+                                if (session?.user?.id) {
+                                    await supabase.from('profiles').update({ language: lang }).eq('id', session.user.id);
+                                }
+                                await changeLanguage(lang);
+                            }}
                             className={`flex-1 mx-1 py-2 rounded border ${
                                 i18n.language.startsWith(lang)
                                 ? 'bg-gold border-gold'

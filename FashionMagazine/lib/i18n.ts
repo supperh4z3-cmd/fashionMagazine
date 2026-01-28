@@ -49,8 +49,25 @@ const resources = {
       featured: "متميز",
       new_season: "الموسم الجديد"
     }
+  },
+  fr: {
+    translation: {
+      welcome: "Bienvenue sur Fashion Magazine",
+      login: "Connexion",
+      register: "S'inscrire",
+      change_language: "Changer de langue",
+      chat: "Discuter",
+      send: "Envoyer",
+      price: "Prix",
+      ask_price: "Demander le prix",
+      products: "Produits",
+      featured: "En vedette",
+      new_season: "Nouvelle Saison"
+    }
   }
 };
+
+export const SUPPORTED_LANGUAGES = ['tr', 'en', 'ar', 'fr'];
 
 i18n
   .use(initReactI18next)
