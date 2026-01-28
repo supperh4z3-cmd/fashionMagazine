@@ -7,10 +7,13 @@ import { Session } from '@supabase/supabase-js';
 import { Image } from 'expo-image';
 import i18n, { changeLanguage, SUPPORTED_LANGUAGES } from '../../lib/i18n';
 import { useTranslation } from 'react-i18next';
+import { useRouter } from 'expo-router';
 
 export default function ProfileScreen() {
   const { t } = useTranslation();
+  const router = useRouter();
   const [session, setSession] = useState<Session | null>(null);
+  const [userRole, setUserRole] = useState<'buyer' | 'seller'>('buyer');
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -32,6 +35,25 @@ export default function ProfileScreen() {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (session) {
+      checkUserRole();
+    }
+  }, [session]);
+
+  const checkUserRole = async () => {
+    if (!session) return;
+    const { data } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', session.user.id)
+      .single();
+
+    if (data) {
+        setUserRole(data.role as 'buyer' | 'seller');
+    }
+  };
 
   const handleAuth = async () => {
     setLoading(true);
@@ -99,6 +121,15 @@ export default function ProfileScreen() {
           </View>
 
           <View className="p-4">
+            {userRole === 'seller' && (
+              <TouchableOpacity
+                onPress={() => router.push('/seller/orders')}
+                className="flex-row items-center p-4 bg-navy-light mb-2 border border-gold rounded-lg"
+              >
+                <FontAwesome name="list-alt" size={20} color="#d4af37" className="mr-4" />
+                <Text className="text-gold text-lg ml-4 font-bold">Gelen Siparişler</Text>
+              </TouchableOpacity>
+            )}
             <TouchableOpacity className="flex-row items-center p-4 bg-navy-light mb-2 border border-white/10 rounded-lg">
               <FontAwesome name="heart" size={20} color="#d4af37" className="mr-4" />
               <Text className="text-white text-lg ml-4">Favorilerim</Text>
