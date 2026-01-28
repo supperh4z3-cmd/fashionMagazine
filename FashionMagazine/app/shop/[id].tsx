@@ -5,9 +5,11 @@ import { Image } from 'expo-image';
 import { useEffect, useState } from 'react';
 import { FontAwesome } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
+import { useToast } from '../../context/ToastContext';
 
 interface Shop {
   id: string;
+  owner_id: string;
   name: string;
   description: string | null;
   logo_url: string | null;
@@ -19,6 +21,7 @@ interface Product {
   images: string[];
   fabric_type: string | null;
   series_quantity: number;
+  is_featured: boolean;
 }
 
 interface CartItem {
@@ -29,10 +32,12 @@ interface CartItem {
 export default function ShopDetailScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
+  const { showToast } = useToast();
 
   const [shop, setShop] = useState<Shop | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isOwner, setIsOwner] = useState(false);
 
   // Simple local cart for MVP
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -60,12 +65,17 @@ export default function ShopDetailScreen() {
         console.error('Error fetching shop:', shopError);
       } else {
         setShop(shopData);
+        // Check ownership
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session && shopData.owner_id === session.user.id) {
+            setIsOwner(true);
+        }
       }
 
       // Fetch Shop Products
       const { data: productsData, error: productsError } = await supabase
         .from('products')
-        .select('id, images, fabric_type, series_quantity') // Price is hidden
+        .select('id, images, fabric_type, series_quantity, is_featured')
         .eq('shop_id', id);
 
       if (productsError) {
@@ -161,6 +171,25 @@ export default function ShopDetailScreen() {
 
   const getCartQuantity = (productId: string) => {
     return cart.find(item => item.productId === productId)?.quantitySeries || 0;
+  };
+
+  const promoteProduct = async (productId: string) => {
+    try {
+        const { error } = await supabase
+            .from('products')
+            .update({ is_featured: true })
+            .eq('id', productId);
+
+        if (error) throw error;
+
+        showToast("Ürün vitrine taşındı!", "success");
+        // Refresh products locally
+        setProducts(current =>
+            current.map(p => p.id === productId ? { ...p, is_featured: true } : p)
+        );
+    } catch (e: any) {
+        showToast("İşlem başarısız: " + e.message, "error");
+    }
   };
 
   const submitRequest = async () => {
@@ -307,12 +336,26 @@ export default function ShopDetailScreen() {
                                     <Text className="text-navy font-bold text-xs">{qty} Seri</Text>
                                 </View>
                               )}
+                              {product.is_featured && (
+                                <View className="absolute top-2 left-2 bg-red-500 px-2 py-1 rounded">
+                                    <Text className="text-white font-bold text-xs">Vitrin</Text>
+                                </View>
+                              )}
                          </View>
 
                          <View className="p-2">
                             <Text className="text-gray-600 text-xs mb-2 h-8" numberOfLines={2}>
                                 {product.fabric_type || 'Ürün'}
                             </Text>
+
+                            {isOwner && !product.is_featured ? (
+                                <TouchableOpacity
+                                    onPress={() => promoteProduct(product.id)}
+                                    className="bg-gold py-2 rounded items-center mb-2"
+                                >
+                                    <Text className="text-navy font-bold text-xs">Bu Ürünü Vitrine Taşı</Text>
+                                </TouchableOpacity>
+                            ) : null}
 
                             {qty === 0 ? (
                                 <TouchableOpacity
